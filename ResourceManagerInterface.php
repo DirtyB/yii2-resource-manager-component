@@ -16,13 +16,31 @@ namespace dosamigos\resourcemanager;
 interface ResourceManagerInterface
 {
 	/**
-	 * Saves a file
+	 * Saves an UploadedFile instance
 	 * @param \yii\web\UploadedFile $file the file uploaded
 	 * @param string $name the name of the file
 	 * @param array $options
 	 * @return boolean
 	 */
 	public function save($file, $name, $options = []);
+
+	/**
+	 * Copies file to storage
+	 * @param string $path path to file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return boolean
+	 */
+	public function saveFile($path, $name, $options = []);
+
+	/**
+	 * Saves data to a file
+	 * @param string $body contents of file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return boolean
+	 */
+	public function saveContents($body, $name, $options = []);
 
 	/**
 	 * Removes a file
@@ -44,5 +62,13 @@ interface ResourceManagerInterface
 	 * @return string
 	 */
 	public function getUrl($name);
+
+	/**
+	 * get contents a file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return string|null body of file
+	 */
+	public function getFileContents($name, $options = []);
 
 }

@@ -2,7 +2,7 @@
     "name": "2amigos/yii2-resource-manager-component",
     "description": "Resource manager eases your project resources management.",
     "keywords": ["yii", "extension", "component", "resource"],
-    "homepage": "https://github.com/2amigos/yii2-resource-manager-component",
+    "homepage": "https://github.com/DirtyB/yii2-resource-manager-component",
     "type": "yii2-extension",
     "license": "BSD-3-Clause",
     "authors": [
@@ -10,12 +10,16 @@
             "name": "Antonio Ramirez",
             "email": "amigo.cobos@gmail.com",
             "homepage" : "http://2amigos.us"
+        },
+        {
+            "name": "Boris Tolstukha",
+            "email": "boris.tolstukha@gmail.com"
         }
     ],
     "minimum-stability": "dev",
     "require": {
         "yiisoft/yii2": "*",
-        "aws/aws-sdk-php": "2.5.2"
+        "aws/aws-sdk-php": "~2.8.0"
     },
     "autoload": {
         "psr-4": {

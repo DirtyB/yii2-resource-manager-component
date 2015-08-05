@@ -39,9 +39,17 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 	 */
 	public $bucket;
 	/**
+	 * @var string Amazon region
+	 */
+	public $region = 'us-east-1';
+	/**
+	 * @var string Url of Amazon S3 static website
+	 */
+	public $staticSiteBaseUrl;
+	/**
 	 * @var \Aws\S3\S3Client
 	 */
-	private $_client;
+	protected $_client;
 
 	/**
 	 * @inheritdoc
@@ -56,11 +64,14 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 				]));
 			}
 		}
+		if(!is_null($this->staticSiteBaseUrl)){
+			$this->staticSiteBaseUrl = trim($this->staticSiteBaseUrl,'/');
+		}
 		parent::init();
 	}
 
 	/**
-	 * Saves a file
+	 * Saves an UploadedFile instance
 	 * @param \yii\web\UploadedFile $file the file uploaded. The [[UploadedFile::$tempName]] will be used as the source
 	 * file.
 	 * @param string $name the name of the file
@@ -70,14 +81,45 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 	 */
 	public function save($file, $name, $options = [])
 	{
+		return $this->saveFile($file->tempName,$name,$options);
+	}
+
+	/**
+	 * Copies file to storage
+	 * @param string $path path to file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return boolean
+	 */
+	public function saveFile($path, $name, $options = []){
+
 		$options = ArrayHelper::merge([
 			'Bucket' => $this->bucket,
 			'Key' => $name,
-			'SourceFile' => $file->tempName,
+			'SourceFile' => $path,
 			'ACL' => CannedAcl::PUBLIC_READ // default to ACL public read
 		], $options);
 
-		return $this->getClient()->putObject($options);
+		$this->getClient()->putObject($options);
+	}
+
+	/**
+	 * Saves data to a file
+	 * @param string $body contents of file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return boolean
+	 */
+	public function saveContents($body, $name, $options = []){
+
+		$options = ArrayHelper::merge([
+			'Bucket' => $this->bucket,
+			'Key' => $name,
+			'Body' => $body,
+			'ACL' => CannedAcl::PUBLIC_READ // default to ACL public read
+		], $options);
+
+		$this->getClient()->putObject($options);
 	}
 
 	/**
@@ -120,13 +162,41 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 	 */
 	public function getUrl($name, $expires = NULL)
 	{
+		if(!is_null($this->staticSiteBaseUrl) && is_null($expires)){
+			return $this->staticSiteBaseUrl.'/'.$name;
+		}
 		return $this->getClient()->getObjectUrl($this->bucket, $name, $expires);
+	}
+
+	/**
+	 * get contents a file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return string|null body of file
+	 */
+	public function getFileContents($name, $options = []){
+
+		$options = ArrayHelper::merge([
+			'Bucket' => $this->bucket,
+			'Key' => $name,
+			//'ACL' => CannedAcl::PUBLIC_READ // default to ACL public read
+		], $options);
+
+		try {
+			$result = $this->getClient()->getObject($options);
+		}
+		catch(NoSuchKeyException $e){
+			return null;
+		}
+
+		return $result['Body'];
 	}
 	
 	/**
 	 * Delete all objects that match a specific key prefix.
 	 * @param string $prefix delete only objects under this key prefix
-	 * @return type
+	 * @return int Returns the number of deleted keys
+	 * @throws RuntimeException if no prefix and no regex is given
 	 */
 	public function deleteMatchingObjects($prefix) {
 		return $this->getClient()->deleteMatchingObjects($this->bucket, $prefix);
@@ -170,7 +240,8 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 		if ($this->_client === null) {
 			$this->_client = S3Client::factory([
 				'key' => $this->key,
-				'secret' => $this->secret
+				'secret' => $this->secret,
+				'region' => $this->region,
 			]);
 		}
 		return $this->_client;
