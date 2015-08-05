@@ -6,6 +6,7 @@
  */
 namespace dosamigos\resourcemanager;
 
+use yii\base\ErrorException;
 use yii\helpers\ArrayHelper;
 use yii\base\Component;
 use Yii;
@@ -20,11 +21,18 @@ use Yii;
  */
 class FileSystemResourceManager extends Component implements ResourceManagerInterface
 {
-	private $_basePath = '@webroot/uploads';
-	private $_baseUrl = '@web/uploads';
 
 	/**
-	 * Saves a file
+	 * @var string the upload directory path or its alias
+	 */
+	public $basePath = '@webroot/uploads';
+	/**
+	 * @var string the upload directory url or its alias
+	 */
+	public $baseUrl = '@web/uploads';
+
+	/**
+	 * Saves an UploadedFile instance
 	 * @param \yii\web\UploadedFile $file the file uploaded
 	 * @param string $name the name of the file. If empty, it will be set to the name of the uploaded file
 	 * @param array $options to save the file. The options can be any of the following:
@@ -34,20 +42,50 @@ class FileSystemResourceManager extends Component implements ResourceManagerInte
 	 */
 	public function save($file, $name, $options = [])
 	{
-		$name = ltrim($name, DIRECTORY_SEPARATOR);
-		
-		if ($folder = trim(ArrayHelper::getValue($options, 'folder'), DIRECTORY_SEPARATOR)) {
-			$name = $folder . DIRECTORY_SEPARATOR . $name;
+		if(empty($name)){
+			$name = $file->name;
 		}
-		
-		if (!ArrayHelper::getValue($options, 'override', true) && $this->fileExists($name)) {
-			return false;
-		}
-		
-		$path = $this->getBasePath() . DIRECTORY_SEPARATOR . $name;
-		@mkdir(dirname($path), 0777, true);
+		$savePath = $this->getFullPath($name,$options);
+		@mkdir(dirname($savePath), 0777, true);
 
-		return $file->saveAs($path);
+		return $file->saveAs($savePath);
+	}
+
+	/**
+	 * Copies file to storage
+	 * @param string $path path to file
+	 * @param string $name the name of the file. If empty, it will be set to the name of the specified file
+	 * @param array $options to save the file. The options can be any of the following:
+	 *  - `folder` : whether we should create a subfolder where to save the file
+	 *  - `override` : whether we allow rewriting a existing file
+	 * @return boolean
+	 */
+	public function saveFile($path, $name, $options = [])
+	{
+		if(empty($name)){
+			$name = basename($path);
+		}
+		$savePath = $this->getFullPath($name,$options);
+		@mkdir(dirname($savePath), 0777, true);
+
+		return copy($path, $savePath);
+	}
+
+	/**
+	 * Saves data to a file
+	 * @param string $body contents of file
+	 * @param string $name the name of the file. If empty, it will be set to the name of the specified file
+	 * @param array $options to save the file. The options can be any of the following:
+	 *  - `folder` : whether we should create a subfolder where to save the file
+	 *  - `override` : whether we allow rewriting a existing file
+	 * @return boolean
+	 */
+	public function saveContents($body, $name, $options = [])
+	{
+		$savePath = $this->getFullPath($name,$options);
+		@mkdir(dirname($savePath), 0777, true);
+
+		return (file_put_contents($savePath,$body) !== false);
 	}
 
 	/**
@@ -81,12 +119,32 @@ class FileSystemResourceManager extends Component implements ResourceManagerInte
 	}
 
 	/**
+	 * get contents a file
+	 * @param string $name the name of the file
+	 * @param array $options
+	 * @return string|null body of file
+	 */
+	public function getFileContents($name, $options = []){
+		$path = $this->getFullPath($name,$options);
+
+		try {
+			$contents = file_get_contents($path);
+		}
+		catch(ErrorException $e){
+			Yii::info($e->getMessage());
+			return null;
+		}
+
+		return ($contents !== false) ? $contents : null;
+	}
+
+	/**
 	 * Returns the upload directory path
 	 * @return string
 	 */
 	public function getBasePath()
 	{
-		return Yii::getAlias($this->_basePath);
+		return Yii::getAlias($this->basePath);
 	}
 
 	/**
@@ -95,7 +153,7 @@ class FileSystemResourceManager extends Component implements ResourceManagerInte
 	 */
 	public function setBasePath($value)
 	{
-		$this->_basePath = rtrim($value, DIRECTORY_SEPARATOR);
+		$this->basePath = rtrim($value, DIRECTORY_SEPARATOR);
 	}
 
 	/**
@@ -104,7 +162,7 @@ class FileSystemResourceManager extends Component implements ResourceManagerInte
 	 */
 	public function getBaseUrl()
 	{
-		return Yii::getAlias($this->_baseUrl);
+		return Yii::getAlias($this->baseUrl);
 	}
 
 	/**
@@ -113,6 +171,30 @@ class FileSystemResourceManager extends Component implements ResourceManagerInte
 	 */
 	public function setBaseUrl($value)
 	{
-		$this->_baseUrl = rtrim($value, '/');
+		$this->baseUrl = rtrim($value, '/');
 	}
+
+	/**
+	 * Prepares directory for specified filename
+	 * @param string $name
+	 * @param array $options
+	 * @return bool|string canonized path or false on fail
+	 */
+	protected function getFullPath($name,$options){
+		$name = ltrim($name, DIRECTORY_SEPARATOR);
+
+		if ($folder = trim(ArrayHelper::getValue($options, 'folder'), DIRECTORY_SEPARATOR)) {
+			$name = $folder . DIRECTORY_SEPARATOR . $name;
+		}
+
+		if (!ArrayHelper::getValue($options, 'override', true) && $this->fileExists($name)) {
+			return false;
+		}
+
+		$path = $this->getBasePath() . DIRECTORY_SEPARATOR . $name;
+		$path = str_replace('/',DIRECTORY_SEPARATOR,$path);
+
+		return $path;
+	}
+
 }
