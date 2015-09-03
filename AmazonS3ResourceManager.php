@@ -6,7 +6,9 @@
  */
 namespace dosamigos\resourcemanager;
 
+use Aws\Common\Exception\RuntimeException;
 use Aws\S3\Enum\CannedAcl;
+use Aws\S3\Exception\NoSuchKeyException;
 use Aws\S3\S3Client;
 use Guzzle\Http\Exception\ClientErrorResponseException;
 use Guzzle\Service\Client;
@@ -186,6 +188,7 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 			$result = $this->getClient()->getObject($options);
 		}
 		catch(NoSuchKeyException $e){
+			Yii::info(print_r($e,true),'debug');
 			return null;
 		}
 
