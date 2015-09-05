@@ -188,7 +188,6 @@ class AmazonS3ResourceManager extends Component implements ResourceManagerInterf
 			$result = $this->getClient()->getObject($options);
 		}
 		catch(NoSuchKeyException $e){
-			Yii::info(print_r($e,true),'debug');
 			return null;
 		}
 
